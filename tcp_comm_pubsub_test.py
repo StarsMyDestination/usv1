@@ -3,6 +3,7 @@ import binascii
 from msgdev import MsgDevice, PeriodTimer
 import socket
 import math
+import serial
 
 
 fst = struct.Struct('!3B')
@@ -11,7 +12,7 @@ host = "192.168.3.99"
 # host = "192.168.4.1"
 # host = "192.168.3.99"
 port = 9000
-# arduinoUrl = "socket://192.168.44.100"
+arduinoUrl = "socket://192.168.3.99:9000"
 
 msgSubConnect = 'tcp://127.0.0.1:5555'
 msgPubBind = 'tcp://0.0.0.0:6666'
@@ -58,7 +59,10 @@ def dataSend(data):
 
 
 def dataRead(s):
-    tmp = s.recv(1024)
+    try:
+        tmp = s.recv(1024)
+    except(socket.error):
+        tmp = s.readline()
     if tmp.startswith('#') and tmp.endswith('\n'):
         tmp = tmp.rstrip('\n')
         ps = tmp.split(',')
@@ -120,7 +124,8 @@ def subFromVeristand(dev):
 
 
 def main():
-    arduinoSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM, )
+    # arduinoSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM, )
+    arduinoSer = serial.serial_for_url(arduinoUrl, baudrate=115200, do_not_open = True, timeout = 1)
     dev = MsgDevice()
     dev.open()
     dev.pub_bind(msgPubBind)
@@ -132,30 +137,32 @@ def main():
     t = PeriodTimer(0.1)
     t.start()
     try:
-        arduinoSocket.connect((host, port))
+        # arduinoSocket.connect((host, port))
+        arduinoSer.open()
         while True:
             with t:
                 # data = subFromVeristand(dev)
                 data = [100, 90, 0]
                 print data
                 try:
-                    arduinoSocket.send(dataSend(data))
-                    dataFromArduino = dataRead(arduinoSocket)
+                    # arduinoSocket.send(dataSend(data))
+                    arduinoSer.write(dataSend(data))
+                    # dataFromArduino = dataRead(arduinoSocket)
+                    dataFromArduino = dataRead(arduinoSer)
                     print dataFromArduino
-                except(socket.error):
-                    arduinoSocket.close()
-                    arduinoSocket.connect((host, port))
-                print
+                except(serial.serialutil.SerialException):
+                    # arduinoSocket.close()
+                    # arduinoSocket.connect((host, port))
+                    arduinoSer.close()
+                    arduinoSer.open()
                 if dataFromArduino:
                     pubToVeristand(dev, dataFromArduino)
     except Exception, e:
         print Exception, ':', e
         raise
-        # print 333333333
     finally:
-        # print 2222222
         dev.close()
-        arduinoSocket.close()
+        # arduinoSocket.close()
 
 
 if __name__ == '__main__':
