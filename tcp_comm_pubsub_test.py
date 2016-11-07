@@ -162,6 +162,7 @@ def main():
         raise
     finally:
         dev.close()
+        arduinoSer.close()
         # arduinoSocket.close()
 
 
