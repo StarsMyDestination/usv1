@@ -3,19 +3,16 @@ import binascii
 from msgdev import MsgDevice, PeriodTimer
 import socket
 import math
+import serial
 
 
 fst = struct.Struct('!9B')
-line = ''
-host = "192.168.3.100"
-# host = "192.168.4.1"
-# host = "192.168.3.99"
-port = 9000
-# arduinoUrl = "socket://192.168.44.100"
+arduinoUrl = "socket://192.168.3.100:9000"
 
 msgSubConnect = 'tcp://127.0.0.1:7777'
 msgPubBind = 'tcp://0.0.0.0:8888'
 
+dataNum = 17
 
 def constraint(num, lowerLimit, upperLimit):
     if num < lowerLimit:
@@ -57,12 +54,12 @@ def dataSend(data):
 
 
 def dataRead(s):
-    tmp = s.recv(1024)
+    tmp = s.readline()
     if tmp.startswith('#') and tmp.endswith('\n'):
         tmp = tmp.rstrip('\n')
         ps = tmp.split(',')
         tmp = ""
-        if len(ps) != 17:
+        if len(ps) != dataNum:
             print 'invalid length'
             return
         else:
@@ -87,6 +84,7 @@ def dataRead(s):
                     voltage, current, power, arduinoReadMark,
                     maxPower, powerIsLimited, autoFlag])
     else:
+        print 'invald data'
         return None
 
 
@@ -135,7 +133,7 @@ def subFromVeristand(dev):
 
 
 def main():
-    arduinoSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM, )
+    arduinoSer = serial.serial_for_url(arduinoUrl, baudrate=115200, do_not_open = True, timeout = 1)
     dev = MsgDevice()
     dev.open()
     dev.pub_bind(msgPubBind)
@@ -148,24 +146,37 @@ def main():
     t = PeriodTimer(0.1)
     t.start()
     try:
-        arduinoSocket.connect((host, port))
+        try:
+            arduinoSer.open()
+        except serial.serialutil.SerialException, e:
+            arduinoSer.close()
+            print e, ", trying reconnet..."
         while True:
             with t:
-                data = subFromVeristand(dev)
+                # data = subFromVeristand(dev)
+                data = [100, 90, 0]
                 print data
-                arduinoSocket.send(dataSend(data))
-                dataFromArduino = dataRead(arduinoSocket)
-                print dataFromArduino
-                print
-                if dataFromArduino:
-                    pubToVeristand(dev, dataFromArduino)
-    except Exception, e:
-        print Exception, ':', e
-        raise
+                if not arduinoSer._isOpen:
+                    try:
+                        arduinoSer.open()
+                    except serial.serialutil.SerialException, e:
+                        print e, ", trying reconnect..."
+                try:
+                    if arduinoSer._isOpen:
+                        arduinoSer.write(dataSend(data))
+                        dataFromArduino = dataRead(arduinoSer)
+                        print dataFromArduino
+                except serial.serialutil.SerialException, e:
+                    arduinoSer.close()                        
+                try:
+                    if dataFromArduino:
+                        pubToVeristand(dev, dataFromArduino)     
+                except UnboundLocalError:
+                    pass
     finally:
         dev.close()
-        arduinoSocket.close()
-
+        arduinoSer.close()
+        print "cleaning up..., dev and serial closed!"
 
 if __name__ == '__main__':
     main()
