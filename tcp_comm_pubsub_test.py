@@ -7,12 +7,7 @@ import serial
 
 
 fst = struct.Struct('!3B')
-line = ''
-host = "192.168.3.99"
-# host = "192.168.4.1"
-# host = "192.168.3.99"
-port = 9000
-arduinoUrl = "socket://192.168.3.99:9000"
+arduinoUrl = "socket://192.168.0.101:9000"
 
 msgSubConnect = 'tcp://127.0.0.1:5555'
 msgPubBind = 'tcp://0.0.0.0:6666'
@@ -59,10 +54,7 @@ def dataSend(data):
 
 
 def dataRead(s):
-    try:
-        tmp = s.recv(1024)
-    except(AttributeError):
-        tmp = s.readline()
+    tmp = s.readline()
     if tmp.startswith('#') and tmp.endswith('\n'):
         tmp = tmp.rstrip('\n')
         ps = tmp.split(',')
