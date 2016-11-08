@@ -61,7 +61,7 @@ def dataSend(data):
 def dataRead(s):
     try:
         tmp = s.recv(1024)
-    except(socket.error):
+    except(AttributeError):
         tmp = s.readline()
     if tmp.startswith('#') and tmp.endswith('\n'):
         tmp = tmp.rstrip('\n')
@@ -137,33 +137,37 @@ def main():
     t = PeriodTimer(0.1)
     t.start()
     try:
-        # arduinoSocket.connect((host, port))
-        arduinoSer.open()
+        try:
+            arduinoSer.open()
+        except serial.serialutil.SerialException, e:
+            arduinoSer.close()
+            print e, ", trying reconnet..."
         while True:
             with t:
                 # data = subFromVeristand(dev)
                 data = [100, 90, 0]
                 print data
+                if not arduinoSer._isOpen:
+                    try:
+                        arduinoSer.open()
+                    except serial.serialutil.SerialException, e:
+                        print e, ", trying reconnect..."
                 try:
-                    # arduinoSocket.send(dataSend(data))
-                    arduinoSer.write(dataSend(data))
-                    # dataFromArduino = dataRead(arduinoSocket)
-                    dataFromArduino = dataRead(arduinoSer)
-                    print dataFromArduino
-                except(serial.serialutil.SerialException):
-                    # arduinoSocket.close()
-                    # arduinoSocket.connect((host, port))
-                    arduinoSer.close()
-                    arduinoSer.open()
-                if dataFromArduino:
-                    pubToVeristand(dev, dataFromArduino)
-    except Exception, e:
-        print Exception, ':', e
-        raise
+                    if arduinoSer._isOpen:
+                        arduinoSer.write(dataSend(data))
+                        dataFromArduino = dataRead(arduinoSer)
+                        print dataFromArduino
+                except serial.serialutil.SerialException, e:
+                    arduinoSer.close()                        
+                try:
+                    if dataFromArduino:
+                        pubToVeristand(dev, dataFromArduino)     
+                except UnboundLocalError:
+                    pass
     finally:
         dev.close()
         arduinoSer.close()
-        # arduinoSocket.close()
+        print "cleaning up..., dev and serial closed!"
 
 
 if __name__ == '__main__':
