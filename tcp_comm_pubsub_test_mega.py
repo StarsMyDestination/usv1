@@ -154,7 +154,7 @@ def main():
         while True:
             with t:
                 # data = subFromVeristand(dev)
-                data = [100, 90, 0]
+                data = [100, 10, 90, 91, 92, 93, 94, 95, 96]
                 print data
                 if not arduinoSer._isOpen:
                     try:

@@ -7,7 +7,7 @@ import serial
 
 
 fst = struct.Struct('!3B')
-arduinoUrl = "socket://192.168.0.101:9000"
+arduinoUrl = "socket://192.168.3.99:9000"
 
 msgSubConnect = 'tcp://127.0.0.1:5555'
 msgPubBind = 'tcp://0.0.0.0:6666'
